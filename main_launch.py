@@ -77,7 +77,8 @@ model_names = sorted(
 )
 
 parser = argparse.ArgumentParser(description="Speed Check for the PyTorch Distributed Training Package (TorchElastic)")
-parser.add_argument("data", metavar="DIR", help="path to dataset")
+# For ImageNet only
+# parser.add_argument("data", metavar="DIR", help="path to dataset")
 parser.add_argument(
     "-a",
     "--arch",

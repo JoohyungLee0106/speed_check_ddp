@@ -1,5 +1,10 @@
-#!/usr/bin/env python3
+# python -m torchelastic.distributed.launch --standalone --nnodes=1 --nproc_per_node=8 main.py
+# python -m torchelastic.distributed.launch --nnodes=$NUM_NODES --nproc_per_node=$WORKERS_PER_NODE --rdzv_id=1234 --rdzv_backend=etcd --rdzv_endpoint=$ETCD_HOST:$ETCD_PORT main.py
 # https://github.com/pytorch/elastic/tree/master/examples
+
+
+
+#!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates.
 # All rights reserved.
 #
@@ -40,7 +45,6 @@ Usage
         --arch resnet18
         --epochs 20
         --batch-size 32
-        <DATA_DIR>
 """
 
 import argparse
@@ -163,7 +167,7 @@ def main():
     )
 
     train_loader, val_loader = initialize_data_loader(
-        args.data, args.batch_size, args.workers
+        args.batch_size, args.workers
     )
 
     # resume from checkpoint if one exists;
@@ -267,7 +271,7 @@ def initialize_model(
 
 
 def initialize_data_loader(
-    data_dir, batch_size, num_data_workers
+    batch_size, num_data_workers
 ) -> Tuple[DataLoader, DataLoader]:
 
     # traindir = os.path.join(data_dir, "train")
@@ -593,4 +597,6 @@ def accuracy(output, target, topk=(1,)):
 
 if __name__ == "__main__":
     os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
+    t = time.time()
     main()
+    print(f'Time taken: {round(time.time() - t)}')

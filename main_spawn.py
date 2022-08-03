@@ -1,4 +1,5 @@
 # python main_spawn.py --dist-url 'tcp://127.0.0.1:FREEPORT' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
+
 # https://github.com/pytorch/examples/tree/main/imagenet
 import argparse
 import os
@@ -482,4 +483,6 @@ def accuracy(output, target, topk=(1,)):
 
 if __name__ == '__main__':
     os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
+    t=time.time()
     main()
+    print(f'Time taken: {round(time.time() - t)}')

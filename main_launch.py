@@ -112,7 +112,7 @@ parser.add_argument(
 parser.add_argument(
     "-b",
     "--batch-size",
-    default=128,
+    default=64,
     type=int,
     metavar="N",
     help="mini-batch size (default: 32), per worker (GPU)",

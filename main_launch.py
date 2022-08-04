@@ -393,8 +393,7 @@ def load_checkpoint(
 
         if rank != max_rank:
             with io.BytesIO(blob.numpy()) as f:
-                snapshot = torch.load(f)
-            state.apply_snapshot(snapshot, device_id)
+                state.load(f, device_id)
 
         # wait till everyone has loaded the checkpoint
         dist.barrier(group=pg)

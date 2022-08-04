@@ -1,6 +1,12 @@
-# python -m torchelastic.distributed.launch --standalone --nnodes=1 --nproc_per_node=8 main.py
+# torchrun --standalone --nnodes=1 --nproc_per_node=8 main_launch.py
+
+
+
 # python -m torchelastic.distributed.launch --nnodes=$NUM_NODES --nproc_per_node=$WORKERS_PER_NODE --rdzv_id=1234 --rdzv_backend=etcd --rdzv_endpoint=$ETCD_HOST:$ETCD_PORT main.py
+# torchrun --standalone --nnodes=1 --nproc_per_node=8 main_launch.py
+# https://pytorch.org/docs/stable/elastic/run.html
 # https://github.com/pytorch/elastic/tree/master/examples
+
 
 
 
@@ -65,6 +71,7 @@ import torch.nn.parallel
 import torch.optim
 import torch.utils.data
 import torch.utils.data.distributed
+import torchvision
 import torchvision.datasets as datasets
 import torchvision.models as models
 import torchvision.transforms as transforms
@@ -105,7 +112,7 @@ parser.add_argument(
 parser.add_argument(
     "-b",
     "--batch-size",
-    default=32,
+    default=128,
     type=int,
     metavar="N",
     help="mini-batch size (default: 32), per worker (GPU)",
@@ -287,14 +294,14 @@ def initialize_data_loader(
             transforms.RandomResizedCrop(32),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            normalize,
+            normalize
         ]))
 
     val_dataset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=
+    root='./data', train=False, download=True, transform=
         transforms.Compose([
             transforms.ToTensor(),
-            normalize,
+            normalize
         ]))
 
     train_sampler = ElasticDistributedSampler(train_dataset)
@@ -599,4 +606,4 @@ if __name__ == "__main__":
     os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
     t = time.time()
     main()
-    print(f'Time taken: {round(time.time() - t)}')
+    print(f'Time taken for torch elastic: {round(time.time() - t)}')

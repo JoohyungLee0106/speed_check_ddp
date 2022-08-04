@@ -1,4 +1,6 @@
-# python main_spawn.py --dist-url 'tcp://127.0.0.1:FREEPORT' --dist-backend 'nccl' --multiprocessing-distributed --world-size 1 --rank 0
+# torchrun main_spawn.py --multiprocessing-distributed --world-size 1 --rank 0
+
+# python main_spawn.py --dist-url tcp://211.115.110.29:23456 --multiprocessing-distributed --world-size 1 --rank 0
 
 # https://github.com/pytorch/examples/tree/main/imagenet
 import argparse
@@ -19,6 +21,7 @@ from torch.optim.lr_scheduler import StepLR
 import torch.multiprocessing as mp
 import torch.utils.data
 import torch.utils.data.distributed
+import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
@@ -42,7 +45,7 @@ parser.add_argument('--epochs', default=50, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=256, type=int,
+parser.add_argument('-b', '--batch-size', default=1024, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -66,7 +69,7 @@ parser.add_argument('--world-size', default=-1, type=int,
                     help='number of nodes for distributed training')
 parser.add_argument('--rank', default=-1, type=int,
                     help='node rank for distributed training')
-parser.add_argument('--dist-url', default='tcp://224.66.41.62:23456', type=str,
+parser.add_argument('--dist-url', default='tcp://211.115.110.29:23456', type=str,
                     help='url used to set up distributed training')
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
@@ -132,8 +135,7 @@ def main_worker(gpu, ngpus_per_node, args):
             # For multiprocessing distributed training, rank needs to be the
             # global rank among all the processes
             args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
-                                world_size=args.world_size, rank=args.rank)
+        dist.init_process_group(backend=args.dist_backend, world_size=args.world_size, rank=args.rank)
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -226,7 +228,7 @@ def main_worker(gpu, ngpus_per_node, args):
         ]))
 
     val_dataset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=
+    root='./data', train=False, download=True, transform=
         transforms.Compose([
             transforms.ToTensor(),
             normalize,
@@ -485,4 +487,4 @@ if __name__ == '__main__':
     os.environ["TORCH_DISTRIBUTED_DEBUG"] = "DETAIL"
     t=time.time()
     main()
-    print(f'Time taken: {round(time.time() - t)}')
+    print(f'Time taken for spawn: {round(time.time() - t)}')

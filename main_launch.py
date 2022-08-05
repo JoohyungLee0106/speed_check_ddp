@@ -1,14 +1,14 @@
+# PyTorch version:
+# >= 1.11
+
+# Run Command:
 # torchrun --standalone --nnodes=1 --nproc_per_node=8 main_launch.py
 
-
-
-# python -m torchelastic.distributed.launch --nnodes=$NUM_NODES --nproc_per_node=$WORKERS_PER_NODE --rdzv_id=1234 --rdzv_backend=etcd --rdzv_endpoint=$ETCD_HOST:$ETCD_PORT main.py
-# torchrun --standalone --nnodes=1 --nproc_per_node=8 main_launch.py
+# Reference:
 # https://pytorch.org/docs/stable/elastic/run.html
 # https://github.com/pytorch/elastic/tree/master/examples
 
-
-
+# Edit by Joohyung Lee (JoohyungLee0106)
 
 #!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates.
@@ -94,7 +94,7 @@ parser.add_argument(
     "-a",
     "--arch",
     metavar="ARCH",
-    default="resnet18",
+    default="resnet50",
     choices=model_names,
     help="model architecture: " + " | ".join(model_names) + " (default: resnet18)",
 )
@@ -112,7 +112,7 @@ parser.add_argument(
 parser.add_argument(
     "-b",
     "--batch-size",
-    default=64,
+    default=128,
     type=int,
     metavar="N",
     help="mini-batch size (default: 32), per worker (GPU)",
@@ -153,7 +153,7 @@ parser.add_argument(
 )
 parser.add_argument(
     "--checkpoint-file",
-    default="/tmp/checkpoint.pth.tar",
+    default="tmp/checkpoint.pth.tar",
     type=str,
     help="checkpoint file path, to load and save to",
 )
@@ -190,12 +190,24 @@ def main():
         state.epoch = epoch
         train_loader.batch_sampler.sampler.set_epoch(epoch)
         adjust_learning_rate(optimizer, epoch, args.lr)
-
+        t = time.time()
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, device_id, print_freq)
+        t1 = time.time()
+        time_tr = torch.tensor([t1 - t]).cuda(device_id)
+        dist.all_reduce(time_tr, dist.ReduceOp.SUM, async_op=False)
+        if device_id == 0:
+            print(f'Average time(sec) for a single epoch training: {round(time_tr.item()/8.0, 3)}')
 
+        t = time.time()
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, device_id, print_freq)
+        t1 = time.time()
+        time_val = torch.tensor([t1 - t]).cuda(device_id)
+        dist.all_reduce(time_val, dist.ReduceOp.SUM, async_op=False)
+        if device_id == 0:
+            print(f'Average time(sec) for a single epoch validation: {round(time_val.item()/8.0, 3)}')
+
 
         # remember best acc@1 and save checkpoint
         is_best = acc1 > state.best_acc1
@@ -436,16 +448,16 @@ def train(
     device_id: int,
     print_freq: int,
 ):
-    batch_time = AverageMeter("Time", ":6.3f")
-    data_time = AverageMeter("Data", ":6.3f")
+    # batch_time = AverageMeter("Time", ":6.3f")
+    # data_time = AverageMeter("Data", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch),
-    )
+    # progress = ProgressMeter(
+    #     len(train_loader),
+    #     [batch_time, data_time, losses, top1, top5],
+    #     prefix="Epoch: [{}]".format(epoch),
+    # )
 
     # switch to train mode
     model.train()
@@ -453,7 +465,7 @@ def train(
     end = time.time()
     for i, (images, target) in enumerate(train_loader):
         # measure data loading time
-        data_time.update(time.time() - end)
+        # data_time.update(time.time() - end)
 
         images = images.cuda(device_id, non_blocking=True)
         target = target.cuda(device_id, non_blocking=True)
@@ -474,11 +486,11 @@ def train(
         optimizer.step()
 
         # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        # batch_time.update(time.time() - end)
+        # end = time.time()
 
-        if i % print_freq == 0:
-            progress.display(i)
+        # if i % print_freq == 0:
+        #     progress.display(i)
 
 
 def validate(
@@ -488,19 +500,19 @@ def validate(
     device_id: int,
     print_freq: int,
 ):
-    batch_time = AverageMeter("Time", ":6.3f")
+    # batch_time = AverageMeter("Time", ":6.3f")
     losses = AverageMeter("Loss", ":.4e")
     top1 = AverageMeter("Acc@1", ":6.2f")
     top5 = AverageMeter("Acc@5", ":6.2f")
-    progress = ProgressMeter(
-        len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
-    )
+    # progress = ProgressMeter(
+    #     len(val_loader), [batch_time, losses, top1, top5], prefix="Test: "
+    # )
 
     # switch to evaluate mode
     model.eval()
 
     with torch.no_grad():
-        end = time.time()
+        # end = time.time()
         for i, (images, target) in enumerate(val_loader):
             if device_id is not None:
                 images = images.cuda(device_id, non_blocking=True)
@@ -517,16 +529,16 @@ def validate(
             top5.update(acc5[0], images.size(0))
 
             # measure elapsed time
-            batch_time.update(time.time() - end)
-            end = time.time()
+            # batch_time.update(time.time() - end)
+            # end = time.time()
 
-            if i % print_freq == 0:
-                progress.display(i)
+            # if i % print_freq == 0:
+                # progress.display(i)
 
         # TODO: this should also be done with the ProgressMeter
-        print(
-            " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
-        )
+        # print(
+        #     " * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}".format(top1=top1, top5=top5)
+        # )
 
     return top1.avg
 

@@ -1,8 +1,13 @@
-# torchrun main_spawn.py --multiprocessing-distributed --world-size 1 --rank 0
+# PyTorch version:
+# >= 1.11
 
-# python main_spawn.py --dist-url tcp://211.115.110.29:23456 --multiprocessing-distributed --world-size 1 --rank 0
+# Run Command:
+# python main_spawn.py --dist-url 'tcp://localhost:23456' --multiprocessing-distributed --world-size 1 --rank 0
 
+# Reference:
 # https://github.com/pytorch/examples/tree/main/imagenet
+
+# Edit by Joohyung Lee (JoohyungLee0106)
 import argparse
 import os
 import random
@@ -34,7 +39,7 @@ model_names = sorted(name for name in models.__dict__
 parser = argparse.ArgumentParser(description='Speed Check for the PyTorch Distributed Training Package (Spawning)')
 # For ImageNet only
 # parser.add_argument('data', metavar='DIR', default='CIFAR10', help='path to dataset (default: CIFAR10)')
-parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
+parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
@@ -45,7 +50,7 @@ parser.add_argument('--epochs', default=50, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=16, type=int,
+parser.add_argument('-b', '--batch-size', default=1024, type=int,
                     metavar='N',
                     help='mini-batch size (default: 256), this is the total '
                          'batch size of all GPUs on the current node when '
@@ -135,7 +140,7 @@ def main_worker(gpu, ngpus_per_node, args):
             # For multiprocessing distributed training, rank needs to be the
             # global rank among all the processes
             args.rank = args.rank * ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, world_size=args.world_size, rank=args.rank)
+        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=args.rank)
     # create model
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
@@ -256,13 +261,24 @@ def main_worker(gpu, ngpus_per_node, args):
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
-
+        t = time.time()
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args)
+        t1 = time.time()
+        time_tr = torch.tensor([t1 - t]).cuda(args.gpu)
+        dist.all_reduce(time_tr, dist.ReduceOp.SUM, async_op=False)
+        if args.gpu == 0:
+            print(f'Average time(sec) for a single epoch training: {round(time_tr.item()/8.0, 3)}')
 
+        t = time.time()
         # evaluate on validation set
         acc1 = validate(val_loader, model, criterion, args)
-        
+        t1 = time.time()
+        time_val = torch.tensor([t1 - t]).cuda(args.gpu)
+        dist.all_reduce(time_val, dist.ReduceOp.SUM, async_op=False)
+        if args.gpu == 0:
+            print(f'Average time(sec) for a single epoch validation: {round(time_val.item()/8.0, 3)}')
+
         scheduler.step()
 
         
@@ -283,15 +299,15 @@ def main_worker(gpu, ngpus_per_node, args):
 
 
 def train(train_loader, model, criterion, optimizer, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
+    # batch_time = AverageMeter('Time', ':6.3f')
+    # data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
+    # progress = ProgressMeter(
+    #     len(train_loader),
+    #     [batch_time, data_time, losses, top1, top5],
+    #     prefix="Epoch: [{}]".format(epoch))
 
     # switch to train mode
     model.train()
@@ -299,7 +315,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
     end = time.time()
     for i, (images, target) in enumerate(train_loader):
         # measure data loading time
-        data_time.update(time.time() - end)
+        # data_time.update(time.time() - end)
 
         if args.gpu is not None:
             images = images.cuda(args.gpu, non_blocking=True)
@@ -322,11 +338,11 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
         optimizer.step()
 
         # measure elapsed time
-        batch_time.update(time.time() - end)
-        end = time.time()
+        # batch_time.update(time.time() - end)
+        # end = time.time()
 
-        if i % args.print_freq == 0:
-            progress.display(i + 1)
+        # if i % args.print_freq == 0:
+            # progress.display(i + 1)
 
 
 def validate(val_loader, model, criterion, args):
@@ -352,20 +368,20 @@ def validate(val_loader, model, criterion, args):
                 top5.update(acc5[0], images.size(0))
 
                 # measure elapsed time
-                batch_time.update(time.time() - end)
-                end = time.time()
+                # batch_time.update(time.time() - end)
+                # end = time.time()
 
-                if i % args.print_freq == 0:
-                    progress.display(i + 1)
+                # if i % args.print_freq == 0:
+                    # progress.display(i + 1)
 
     batch_time = AverageMeter('Time', ':6.3f', Summary.NONE)
     losses = AverageMeter('Loss', ':.4e', Summary.NONE)
     top1 = AverageMeter('Acc@1', ':6.2f', Summary.AVERAGE)
     top5 = AverageMeter('Acc@5', ':6.2f', Summary.AVERAGE)
-    progress = ProgressMeter(
-        len(val_loader) + (args.distributed and (len(val_loader.sampler) * args.world_size < len(val_loader.dataset))),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
+    # progress = ProgressMeter(
+        # len(val_loader) + (args.distributed and (len(val_loader.sampler) * args.world_size < len(val_loader.dataset))),
+        # [batch_time, losses, top1, top5],
+        # prefix='Test: ')
 
     # switch to evaluate mode
     model.eval()
@@ -383,7 +399,7 @@ def validate(val_loader, model, criterion, args):
             num_workers=args.workers, pin_memory=True)
         run_validate(aux_val_loader, len(val_loader))
 
-    progress.display_summary()
+    # progress.display_summary()
 
     return top1.avg
 
@@ -420,7 +436,7 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
     def all_reduce(self):
-        total = torch.FloatTensor([self.sum, self.count])
+        total = torch.FloatTensor([self.sum, self.count]).cuda(self.sum.device)
         dist.all_reduce(total, dist.ReduceOp.SUM, async_op=False)
         self.sum, self.count = total.tolist()
         self.avg = self.sum / self.count

@@ -6,7 +6,7 @@ It seems PyTorch offers two different methods to handle multi-gpu training, i.e.
 
 ## Requirements
 
-PyTorch version: > 1.10
+PyTorch version: > 1.10\
 torchelastic
 
 ## Run Commands (single node)

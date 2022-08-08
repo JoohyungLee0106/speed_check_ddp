@@ -2,7 +2,7 @@
 
 ## Summary
 
-It seems PyTorch offers two different methods to handle multi-gpu training, i.e., [Spawning](https://github.com/pytorch/examples/tree/main/imagenet), and [ElasticTorch](https://github.com/pytorch/elastic/tree/master/examples)(newer). The goal is to compare these methods in speed.
+It seems PyTorch offers two (maybe three? including [torchx](https://pytorch.org/torchx/latest/)) different methods to handle multi-gpu training, i.e., [Spawning](https://github.com/pytorch/examples/tree/main/imagenet), and [ElasticTorch](https://github.com/pytorch/elastic/tree/master/examples)(newer). The goal is to compare these methods in speed.
 
 ## Requirements
 

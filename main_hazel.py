@@ -1,8 +1,11 @@
 # Edit by Joohyung Lee (JoohyungLee0106)
 # ln 180 부터 보셔도 됩니다.
 
-# DDP command: 
+
+# DDP command (by default, use 3 & 4 gpus):
 # CUDA_VISIBLE_DEVICES=3,4 python main_spawn.py --dist-url 'tcp://localhost:23456' --multiprocessing-distributed --world-size 1 --rank 0
+
+# single GPU시, default gpu# = 6
 
 # world_size = node 수 = 컴퓨터 수
 import argparse
@@ -40,7 +43,7 @@ parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet50',
                     choices=model_names,
                     help='model architecture: ' +
                         ' | '.join(model_names) +
-                        ' (default: resnet18)')
+                        ' (default: resnet50)')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=50, type=int, metavar='N',
